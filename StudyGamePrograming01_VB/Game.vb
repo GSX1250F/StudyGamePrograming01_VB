@@ -21,20 +21,6 @@ Public Class Game
     Private scene As Integer        '0 = playing , 1=stopping ,  2=gameover
 
     'フォーム作成時に最初に実行される
-    Private Sub Game_Load(sender As Object, e As EventArgs) Handles MyBase.Load
-        mIsRunning = True
-        Dim success = Initialize()      '各変数を初期化
-    End Sub
-    Private Sub Timer_Tick(sender As Object, e As EventArgs) Handles Timer.Tick
-        If mIsRunning = True Then
-            ProcessInput()      '入力サブプログラム
-            UpdateGame()        '更新サブプログラム
-            GenerateOutput()    '出力サブプログラム
-            mTicksCountPre = mTicksCount.ElapsedMilliseconds
-        Else
-            Shutdown()          '終了サブプログラム
-        End If
-    End Sub
     Public Function Initialize() As Boolean
         Me.StartPosition = FormStartPosition.Manual
         Me.Location = New Point(50, 50)         'ディスプレイの決まった位置でフォームが表示されるようにする。
@@ -54,7 +40,6 @@ Public Class Game
 
         Return True
     End Function
-
     Public Sub LoadData()
         paddleImage = Image.FromFile(Application.StartupPath & "\Assets\paddle.png")
         mPaddleH = CInt(mWindowH * 0.196)
@@ -66,14 +51,33 @@ Public Class Game
         mPaddlePos = {thickness * 3, mWindowH / 2}
         mPaddleDir = 0
         mBallPos = {mWindowW / 2, mWindowH / 2}
-        Using rng As RandomNumberGenerator = RandomNumberGenerator.Create()
-            Dim angle As Integer = rng.GetInt32(15, 75)
-            Dim pmx As Integer = 2 * RandomNumberGenerator.GetInt32(0, 2) - 1
-            Dim pmy As Integer = 2 * RandomNumberGenerator.GetInt32(0, 2) - 1
-        End Using
+        Dim rnd As New Random()
+        Dim angle As Integer = rnd.Next(15, 75)
+        Dim pmx As Integer = 2 * rnd.Next(0, 2) - 1
+        Dim pmy As Integer = 2 * rnd.Next(0, 2) - 1
         mBallSpeed = {pmx * mWindowH * 0.4 * Math.Cos(angle / 180 * Math.PI), pmy * 300 * Math.Sin(angle / 180 * Math.PI)}
         scene = 0
     End Sub
+    Public Sub Shutdown()
+        mTicksCount.Stop()
+        Me.Close()
+    End Sub
+    Private Sub Game_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        mIsRunning = True
+        Dim success = Initialize()      '各変数を初期化
+    End Sub
+    Private Sub Timer_Tick(sender As Object, e As EventArgs) Handles Timer.Tick
+        If mIsRunning = True Then
+            ProcessInput()      '入力サブプログラム
+            UpdateGame()        '更新サブプログラム
+            GenerateOutput()    '出力サブプログラム
+            mTicksCountPre = mTicksCount.ElapsedMilliseconds
+        Else
+            Shutdown()          '終了サブプログラム
+        End If
+    End Sub
+
+
     Private Sub ProcessInput()
         If mKeyInputs.Count = 0 Then
             mKeyInputs.Add(Nothing)     'キーイベントが無かったとき、Nothingを配列に格納
@@ -188,10 +192,7 @@ Public Class Game
 
         PictureBox.Image = mWindow      'PictureBoxに表示する
     End Sub
-    Private Sub Shutdown()
-        mTicksCount.Stop()
-        Me.Close()
-    End Sub
+
     Private Sub KeyState(sender As Object, keyState As System.Windows.Forms.KeyEventArgs) Handles Me.KeyDown    'Keyイベントハンドラ
         mKeyInputs.Add(keyState)    'キーコードを配列に入れる。
     End Sub

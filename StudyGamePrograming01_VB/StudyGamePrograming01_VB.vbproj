@@ -96,7 +96,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Compile Include="StartMod.vb" />
+    <Compile Include="Main.vb" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Game.resx">

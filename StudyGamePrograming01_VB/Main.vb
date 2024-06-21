@@ -1,4 +1,4 @@
-﻿Module StartMod
+﻿Module Main
     Sub Main()
         Dim game As New Game
         game.Show()

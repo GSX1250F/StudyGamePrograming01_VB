@@ -20,7 +20,7 @@ Public Class Game
     Private Ticks As New System.Diagnostics.Stopwatch()     'ゲーム開始からの経過時間
     Private mTicksCount As Integer     '時間管理（秒）
     Private mIsRunning As Boolean   'ゲーム実行中
-    Private mKeyBoardByte(255) As Byte      'キーボード入力検知
+    Private mKeyStateByte(255) As Byte      'キーボード入力検知
     Private mKeyState(255) As Boolean      'キーボード状態
 
     'Game Specific
@@ -84,10 +84,10 @@ Public Class Game
         End If
     End Sub
     Private Sub ProcessInput()
-        GetKeyboardState(mKeyBoardByte)
-        For i As Integer = 0 To mKeyBoardByte.Count - 1
+        GetKeyboardState(mKeyStateByte)
+        For i As Integer = 0 To mKeyStateByte.Count - 1
             'キー入力状態を、ON=True, OFF=Falseに変換
-            mKeyState(i) = CBool(mKeyBoardByte(i) And &H80)
+            mKeyState(i) = CBool(mKeyStateByte(i) And &H80)
         Next
 
         'ゲーム終了

@@ -1,4 +1,5 @@
-﻿Imports System.Security.Cryptography
+﻿Imports System.Runtime.InteropServices
+Imports System.Security.Cryptography
 
 Structure Vector2
     Dim x As Single
@@ -6,6 +7,11 @@ Structure Vector2
 End Structure
 
 Public Class Game
+    'キーボード入力用Windows API導入
+    <DllImport("user32.dll", ExactSpelling:=True)>
+    Private Shared Function GetKeyboardState(ByVal keyStates() As Byte) As Boolean
+    End Function
+
     '変数宣言
     Private mWindow As Bitmap       'PictureBoxと同じサイズのビットマップ
     Private mRenderer As Graphics   '描画用レンダラー
@@ -14,7 +20,8 @@ Public Class Game
     Private Ticks As New System.Diagnostics.Stopwatch()     'ゲーム開始からの経過時間
     Private mTicksCount As Integer     '時間管理（秒）
     Private mIsRunning As Boolean   'ゲーム実行中
-    Private mKeyState(255) As Byte      'キーボード入力検知
+    Private mKeyBoardByte(255) As Byte      'キーボード入力検知
+    Private mKeyState(255) As Boolean      'キーボード状態
 
     'Game Specific
     Private mPaddleDir As Integer               'パドルの動作方向。+が下方向、-が上方向。
@@ -77,7 +84,46 @@ Public Class Game
         End If
     End Sub
     Private Sub ProcessInput()
+        GetKeyboardState(mKeyBoardByte)
+        For i As Integer = 0 To mKeyBoardByte.Count - 1
+            'キー入力状態を、ON=True, OFF=Falseに変換
+            mKeyState(i) = CBool(mKeyBoardByte(i) And &H80)
+        Next
 
+        'ゲーム終了
+        If mKeyState(Keys.Escape) = True Then
+            mIsRunning = False
+        End If
+
+        'パドル移動
+        mPaddleDir = 0
+        If mKeyState(Keys.Up) = True Then
+            mPaddleDir = -1
+        ElseIf mKeyState(Keys.Down) = True Then
+            mPaddleDir = 1
+        End If
+
+        'ポーズ機能
+        If mKeyState(Keys.S) = True Then
+            If pause = True Then
+                scene = 1
+            Else
+                pause = True
+            End If
+        ElseIf mKeyState(Keys.S) = False Then
+            If pause = False Then
+                scene = 0
+            Else
+                pause = False
+            End If
+        End If
+
+        'リスタート機能
+        If mKeyState(Keys.R) = True Then
+            If scene > 0 Then
+                InitGame()
+            End If
+        End If
     End Sub
     Private Sub UpdateGame()
         '前のフレームから16ms経つまで待つ(≒60fps)

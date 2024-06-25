@@ -6,84 +6,91 @@ Structure Vector2
 End Structure
 
 Public Class Game
-    'Public
-    Public Sub New()    'コンストラクタ
-        InitializeComponent()       ' この呼び出しはデザイナーで必要です。
+    '変数宣言
+    Private mWindow As Bitmap       'PictureBoxと同じサイズのビットマップ
+    Private mRenderer As Graphics   '描画用レンダラー
+    Private mWindowWidth As Integer      'PictureBoxの横幅
+    Private mWindowHeight As Integer     'PictureBoxの縦幅
+    Private Ticks As New System.Diagnostics.Stopwatch()     'ゲーム開始からの経過時間
+    Private mTicksCount As Integer     '時間管理（秒）
+    Private mIsRunning As Boolean   'ゲーム実行中
+    Private mKeyState(255) As Byte      'キーボード入力検知
+
+    'Game Specific
+    Private mPaddleDir As Integer               'パドルの動作方向。+が下方向、-が上方向。
+    Private mPaddlePos As New Vector2           'パドルの位置（2次元ベクトル形式）
+    Private mPaddleSpeed As Single              'パドルの動作速度
+    Private mBallPos As New Vector2             'パドルの位置（2次元ベクトル形式）
+    Private mBallVel As New Vector2             'ボールの速度（2次元ベクトル形式）
+    Private Const thickness As Integer = 15     '壁・ボール・パドルの厚み
+    Private Const paddleH As Integer = 150      'パドルの高さ
+    Private paddleImage As Image                'パドルのテクスチャ
+    Private scene As Integer                    '0:ゲーム中 , 1:ポーズ中 , 2:ゲームオーバー
+    Private pause As Boolean                    'true:ポーズ中
+    Private mFontSize As Integer = 100    'テキストのフォントサイズ
+    Private mText As New List(Of String)        'テキスト
+    Private mTextPos As New List(Of Vector2)    'テキスト表示位置
+    Private mTextStyle As New List(Of Font)     'テキストスタイル
+
+
+    Private Sub Game_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         mWindow = Nothing
         mRenderer = Nothing
-        mIsRunning = True
-        mTicksCount = 0
-        stopwatch.Start()
+        mWindowWidth = 1024
+        mWindowHeight = 768
+
+        Dim success = Initialize()
+        If success = True Then
+            mIsRunning = True
+            LoadData()
+            InitGame()
+        Else
+            Shutdown()
+        End If
     End Sub
 
-    Public Function Initialize() As Boolean
+    Private Function Initialize() As Boolean
         'フォームを初期化
-        Me.SetBounds(100, 100, mWindowW + 26, mWindowH + 49)
+        Me.SetDesktopBounds(100, 100, mWindowWidth + 26, mWindowHeight + 49)
         Me.DoubleBuffered = Enabled
-        PictureBox.SetBounds(5, 5, mWindowW, mWindowH)
-        PictureBox.BackColor = Color.DarkGray
-        'mWindowを初期化
-        mWindow = New Bitmap(mWindowW, mWindowH)
+        PictureBox.SetBounds(5, 5, mWindowWidth, mWindowHeight)
+        PictureBox.BackColor = Color.Black
+        '描画を初期化
+        mWindow = New Bitmap(mWindowWidth, mWindowHeight)
         mRenderer = Graphics.FromImage(mWindow)
-        'パドルのスプライト用画像を読み込み
-        paddleImage = Image.FromFile(Application.StartupPath & "\Assets\paddle.png")
-
-        'テキスト表示を用意
-        'ポーズのテキスト
-        mText.Add("Press S to Pause")       'mText[0]がポーズのテキスト
-        Dim tstyle As New Font("Yu Gothic UI", CInt(mWindowW * 0.06))
-        mTextStyle.Add(tstyle)
-        Dim pos As Vector2
-        pos.x = CInt(mWindowW * 0.15)
-        pos.y = CInt(mWindowH * 0.33)
-        mTextPos.Add(pos)
-        'ゲームオーバーのテキスト
-        mText.Add("Game Over")       'mText[1]がゲームオーバーのテキスト
-        tstyle = New Font("Yu Gothic UI", CInt(mWindowW * 0.1))
-        mTextStyle.Add(tstyle)
-        pos.x = CInt(mWindowW * 0.15)
-        pos.y = CInt(mWindowH * 0.33)
-        mTextPos.Add(pos)
-        'リスタートのテキスト
-        mText.Add("Press R to restart")       'mText[1]がゲームオーバーのテキスト
-        tstyle = New Font("Yu Gothic UI", CInt(mWindowW * 0.06))
-        mTextStyle.Add(tstyle)
-        pos.x = CInt(mWindowW * 0.18)
-        pos.y = CInt(mWindowH * 0.56)
-        mTextPos.Add(pos)
-
-        ResetGame()
+        'ストップウォッチ開始
+        Ticks.Start()
+        'タイマー開始
+        RunLoop.Interval = 16
+        RunLoop.Enabled = True
+        mTicksCount = Ticks.ElapsedMilliseconds
 
         Return True
     End Function
-
-    Public Sub RunLoop()
-        Do While mIsRunning = True
+    Private Sub RunLoop_Tick(sender As Object, e As EventArgs) Handles RunLoop.Tick
+        If mIsRunning Then
             ProcessInput()
             UpdateGame()
             GenerateOutput()
-            Application.DoEvents()
-        Loop
+        Else
+            Shutdown()
+        End If
     End Sub
-
-    Public Sub Shutdown()
-        mRenderer = Nothing
-        mWindow = Nothing
-        Me.Close()
-    End Sub
-
-    'Private
     Private Sub ProcessInput()
 
     End Sub
-
     Private Sub UpdateGame()
-        '16ms経過までは待つ（フレーム制限）。約60fps
-        Do While (stopwatch.ElapsedMilliseconds - mTicksCount) < 16
-        Loop
-        Dim deltaTime = (stopwatch.ElapsedMilliseconds - mTicksCount) / 1000    'deltaTime計算。単位は秒にする。
-        If (deltaTime > 0.05) Then deltaTime = 0.05     '更新が遅すぎても最低のfpsを確保。50ms (20Fps)
-        mTicksCount = stopwatch.ElapsedTicks        '次のフレームのためtick countsを更新
+        '前のフレームから16ms経つまで待つ(≒60fps)
+        While Ticks.ElapsedMilliseconds < mTicksCount + 16
+        End While
+        'デルタタイムの計算
+        Dim deltaTime As Single = (Ticks.ElapsedMilliseconds - mTicksCount) / 1000
+
+        'デルタタイムを最大値で制限する(=20fps)
+        If deltaTime > 0.05 Then
+            deltaTime = 0.05
+        End If
+        mTicksCount = Ticks.ElapsedMilliseconds
 
         If (scene = 0) Then
             'パドル位置の更新
@@ -91,8 +98,8 @@ Public Class Game
             If (mPaddlePos.y < (paddleH / 2.0 + thickness)) Then
                 mPaddlePos.y = paddleH / 2.0 + thickness
             End If
-            If (mPaddlePos.y > (mWindowH - paddleH / 2.0 - thickness)) Then
-                mPaddlePos.y = mWindowH - paddleH / 2.0 - thickness
+            If (mPaddlePos.y > (mWindowHeight - paddleH / 2.0 - thickness)) Then
+                mPaddlePos.y = mWindowHeight - paddleH / 2.0 - thickness
             End If
 
             '更新後のボール位置を計算
@@ -100,17 +107,17 @@ Public Class Game
             mBallPosPost.x = mBallPos.x + mBallVel.x * deltaTime
             mBallPosPost.y = mBallPos.y + mBallVel.y * deltaTime
             'ボールが壁に当たったら跳ね返る
-            If (mBallPosPost.x + thickness * 0.5 >= (mWindowW - thickness) And mBallVel.x > 0.0) Then
+            If (mBallPosPost.x + thickness * 0.5 >= (mWindowWidth - thickness) And mBallVel.x > 0.0) Then
                 mBallVel.x *= -1.0
-                mBallPosPost.x = mWindowW - thickness - thickness * 0.5
+                mBallPosPost.x = mWindowWidth - thickness - thickness * 0.5
             End If
             If (mBallPosPost.y - thickness * 0.5 <= thickness And mBallVel.y < 0.0) Then
                 mBallVel.y *= -1.0
                 mBallPosPost.y = thickness + thickness * 0.5
             End If
-            If (mBallPosPost.y + thickness * 0.5 >= mWindowH - thickness And mBallVel.y > 0.0) Then
+            If (mBallPosPost.y + thickness * 0.5 >= mWindowHeight - thickness And mBallVel.y > 0.0) Then
                 mBallVel.y *= -1.0
-                mBallPosPost.y = mWindowH - thickness - thickness * 0.5
+                mBallPosPost.y = mWindowHeight - thickness - thickness * 0.5
             End If
             'パドルでボールが跳ね返る判定
             '更新後のボール左端がパドル右端より小さく、ボールが左向きであるときに、
@@ -136,7 +143,7 @@ Public Class Game
     End Sub
 
     Private Sub GenerateOutput()
-        mRenderer.Clear(Color.DarkGray)    '背景の色を灰色でクリア
+        mRenderer.Clear(Color.Black)    '背景の色を黒色でクリア
 
         '壁の描画
         Dim brush As New SolidBrush(Color.FromArgb(255, 200, 200, 200))     'Brushオブジェクトの作成
@@ -145,21 +152,21 @@ Public Class Game
         With wall
             .X = 0
             .Y = 0
-            .Width = mWindowW
+            .Width = mWindowWidth
             .Height = thickness
         End With
         mRenderer.FillRectangle(brush, wall)
         '下壁を描画
         With wall
-            .Y = mWindowH - thickness
+            .Y = mWindowHeight - thickness
         End With
         mRenderer.FillRectangle(brush, wall)
         '右壁を描画
         With wall
-            .X = mWindowW - thickness
+            .X = mWindowWidth - thickness
             .Y = 0
             .Width = thickness
-            .Height = mWindowH
+            .Height = mWindowHeight
         End With
         mRenderer.FillRectangle(brush, wall)
 
@@ -201,22 +208,58 @@ Public Class Game
         PictureBox.Image = mWindow
     End Sub
 
-    Private Sub ResetGame()
+    Private Sub Shutdown()
+        mRenderer = Nothing
+        mWindow = Nothing
+        Me.Close()
+    End Sub
+
+    Private Sub LoadData()
+        'パドルのスプライト用画像を読み込み
+        paddleImage = Image.FromFile(Application.StartupPath & "\Assets\paddle.png")
+
+        'テキスト表示を用意
+        'ポーズのテキスト
+        mText.Add("Press S to Pause")       'mText[0]がポーズのテキスト
+        Dim tstyle As New Font("Yu Gothic UI", CInt(mWindowWidth * 0.06))
+        mTextStyle.Add(tstyle)
+        Dim pos As Vector2
+        pos.x = CInt(mWindowWidth * 0.15)
+        pos.y = CInt(mWindowHeight * 0.33)
+        mTextPos.Add(pos)
+        'ゲームオーバーのテキスト
+        mText.Add("Game Over")       'mText[1]がゲームオーバーのテキスト
+        tstyle = New Font("Yu Gothic UI", CInt(mWindowWidth * 0.1))
+        mTextStyle.Add(tstyle)
+        pos.x = CInt(mWindowWidth * 0.15)
+        pos.y = CInt(mWindowHeight * 0.33)
+        mTextPos.Add(pos)
+        'リスタートのテキスト
+        mText.Add("Press R to restart")       'mText[1]がゲームオーバーのテキスト
+        tstyle = New Font("Yu Gothic UI", CInt(mWindowWidth * 0.06))
+        mTextStyle.Add(tstyle)
+        pos.x = CInt(mWindowWidth * 0.18)
+        pos.y = CInt(mWindowHeight * 0.56)
+        mTextPos.Add(pos)
+
+    End Sub
+
+    Private Sub InitGame()
         'パドルとボール位置・速さ・方向をリセット
         mPaddlePos.x = thickness * 2
         mPaddlePos.y = thickness * 0.5
         mPaddlePos.x = thickness * 2
-        mPaddlePos.y = mWindowH * 0.5
+        mPaddlePos.y = mWindowHeight * 0.5
         mPaddleDir = 0
         mPaddleSpeed = 200.0
-        mBallPos.x = mWindowW * 0.5
-        mBallPos.y = mWindowH * 0.5
+        mBallPos.x = mWindowWidth * 0.5
+        mBallPos.y = mWindowHeight * 0.5
         Dim random As New Random()
         Dim angle As Integer = random.Next(15, 75)
         Dim pmx As Integer = 2 * random.Next(0, 2) - 1
         Dim pmy As Integer = 2 * random.Next(0, 2) - 1
-        mBallVel.x = pmx * mWindowH * 0.4 * Math.Cos(angle / 180 * Math.PI)
-        mBallVel.y = pmy * mWindowH * 0.4 * Math.Sin(angle / 180 * Math.PI)
+        mBallVel.x = pmx * 300 * Math.Cos(angle / 180 * Math.PI)
+        mBallVel.y = pmy * 300 * Math.Sin(angle / 180 * Math.PI)
 
         scene = 0
     End Sub
@@ -228,30 +271,6 @@ Public Class Game
         End Select
     End Sub
 
-    Private mWindow As Bitmap           'PictureBoxと同じサイズ
-    Private mRenderer As Graphics       '2D描画用レンダラ
-    Private stopwatch As New System.Diagnostics.Stopwatch()   'ゲーム開始時からの経過時間
-    Private mTicksCount As Integer      'ゲーム開始時からの経過時間
-    Private mIsRunning As Boolean       'ゲーム実行中か否か
-    Private mKeyInputs As New List(Of System.Windows.Forms.KeyEventArgs)    'キー入力の配列
-    Private mWindowW As Integer = 1024      'ウィンドウの横幅
-    Private mWindowH As Integer = 768       'ウィンドウの縦幅
-
-    'Game Specific
-    Private mPaddleDir As Integer               'パドルの動作方向。+が下方向、-が上方向。
-    Private mPaddlePos As New Vector2           'パドルの位置（2次元ベクトル形式）
-    Private mPaddleSpeed As Single              'パドルの動作速度
-    Private mBallPos As New Vector2             'パドルの位置（2次元ベクトル形式）
-    Private mBallVel As New Vector2             'ボールの速度（2次元ベクトル形式）
-    Private Const thickness As Integer = 15     '壁・ボール・パドルの厚み
-    Private Const paddleH As Integer = 150      'パドルの高さ
-    Private paddleImage As Image                'パドルのテクスチャ
-    Private scene As Integer                    '0:ゲーム中 , 1:ポーズ中 , 2:ゲームオーバー
-    Private pause As Boolean                    'true:ポーズ中
-    Private Const mFontSize As Integer = 100    'テキストのフォントサイズ
-    Private mText As New List(Of String)        'テキスト
-    Private mTextPos As New List(Of Vector2)    'テキスト表示位置
-    Private mTextStyle As New List(Of Font)     'テキストスタイル
 
 
 End Class

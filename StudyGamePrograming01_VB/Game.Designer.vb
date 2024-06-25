@@ -24,7 +24,7 @@ Partial Class Game
     Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container()
         Me.PictureBox = New System.Windows.Forms.PictureBox()
-        Me.Timer = New System.Windows.Forms.Timer(Me.components)
+        Me.RunLoop = New System.Windows.Forms.Timer(Me.components)
         CType(Me.PictureBox, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
@@ -51,5 +51,5 @@ Partial Class Game
     End Sub
 
     Friend WithEvents PictureBox As PictureBox
-    Friend WithEvents Timer As Timer
+    Friend WithEvents RunLoop As Timer
 End Class

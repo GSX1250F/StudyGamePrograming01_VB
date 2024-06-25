@@ -33,7 +33,7 @@ Public Class Game
     Private Const paddleH As Integer = 150      'パドルの高さ
     Private paddleImage As Image                'パドルのテクスチャ
     Private scene As Integer                    '0:ゲーム中 , 1:ポーズ中 , 2:ゲームオーバー
-    Private pause As Boolean                    'true:ポーズ中
+    Private pause(2) As Boolean                    'ポーズ中のフラグ
     Private mFontSize As Integer = 100    'テキストのフォントサイズ
     Private mText As New List(Of String)        'テキスト
     Private mTextPos As New List(Of Vector2)    'テキスト表示位置
@@ -104,19 +104,7 @@ Public Class Game
         End If
 
         'ポーズ機能
-        If mKeyState(Keys.S) = True Then
-            If pause = True Then
-                scene = 1
-            Else
-                pause = True
-            End If
-        ElseIf mKeyState(Keys.S) = False Then
-            If pause = False Then
-                scene = 0
-            Else
-                pause = False
-            End If
-        End If
+        'チャタリング防止とKeyDown/Upで使う方がやりやすいので、イベントハンドラで実装
 
         'リスタート機能
         If mKeyState(Keys.R) = True Then
@@ -308,14 +296,36 @@ Public Class Game
         mBallVel.y = pmy * 300 * Math.Sin(angle / 180 * Math.PI)
 
         scene = 0
+        pause(0) = False
+        pause(1) = False
     End Sub
 
     Private Sub Game_KeyDown(ByVal sender As Object, ByVal e As System.Windows.Forms.KeyEventArgs) Handles Me.KeyDown
-        Select Case e.KeyCode
-            Case Keys.Q, Keys.Escape
-                mIsRunning = False
-        End Select
+        'ポーズ機能
+        If e.KeyCode = Keys.S Then
+            If (pause(0) = False) And (pause(1) = False) Then
+                pause(0) = True
+                scene = 1
+            End If
+            If (pause(0) = True) And (pause(1) = True) Then
+                pause(0) = False
+            End If
+        End If
+
     End Sub
+    Private Sub Game_KeyUp(ByVal sender As Object, ByVal e As System.Windows.Forms.KeyEventArgs) Handles Me.KeyUp
+        'ポーズ機能
+        If e.KeyCode = Keys.S Then
+            If (pause(0) = True) And (pause(1) = False) Then
+                pause(1) = True
+            End If
+            If (pause(0) = False) And (pause(1) = True) Then
+                pause(1) = False
+                scene = 0
+            End If
+        End If
+    End Sub
+
 
 
 
